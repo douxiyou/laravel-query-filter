@@ -45,7 +45,7 @@ class QueryBuilder implements \ArrayAccess
      * @param Request|null $request
      * @return $this
      */
-    function for($subject, ?Request $request): self {
+    static function for($subject, ?Request $request): self {
         if (is_subclass_of($subject, Model::class)) {
             $subject = $subject::query();
         }
