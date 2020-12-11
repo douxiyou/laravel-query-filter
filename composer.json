@@ -1,0 +1,30 @@
+{
+    "name": "ningwei/filter-generate",
+    "authors": [
+        {
+            "name": "sherrin.ning",
+            "email": "sherrin.ning@gmail.com"
+        }
+    ],
+    "require": {
+        "php": "^7.3|^8.0",
+        "illuminate/database": "^8.0",
+        "illuminate/http": "^8.0",
+        "illuminate/support": "^8.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Sherrin\\QueryBuilder\\": "src"
+        }
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Sherrin\\QueryBuilder\\QueryBuilderServiceProvider"
+            ]
+        }
+    }
+}
