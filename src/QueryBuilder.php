@@ -5,10 +5,12 @@ use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\Request;
+use Illuminate\Support\Traits\ForwardsCalls;
 use Ningwei\QueryBuilder\Exceptions\InvalidSubject;
 
 class QueryBuilder implements \ArrayAccess
 {
+    use \AddFieldsToQuery, ForwardsCalls;
     /**
      * @var QueryBuilderRequest
      */
@@ -39,6 +41,36 @@ class QueryBuilder implements \ArrayAccess
 
         return $this;
     }
+    function __call($name, $arguments)
+    {
+        $result = $this->forwardCallTo($this->subject, $name, $arguments);
+        // 如果调用对方法返回的对象是查询主体，那就返回$this,以继续链式操作
+        // 不直接返回result的原因就是可能会失去QueryBuilder提供的方法
+        return $result;
+    }
+
+    /**
+     * @return EloquentBuilder|Relation
+     */
+    function getSubject() {
+        return $this->subject;
+    }
+
+    /**
+     * @return EloquentBuilder
+     */
+    function getEloquentBuilder(): EloquentBuilder
+    {
+        if ($this->subject instanceof EloquentBuilder) {
+            return $this->subject;
+        }
+
+        if ($this->subject instanceof Relation) {
+            return $this->subject->getQuery();
+        }
+
+        throw InvalidSubject::make($this->subject);
+    }
 
     /**
      * @param EloquentBuilder|string| Relation $subject 查询主体
@@ -64,7 +96,7 @@ class QueryBuilder implements \ArrayAccess
      */
     public function offsetExists($offset)
     {
-        // TODO: Implement offsetExists() method.
+        return isset($this->subject[$offset]);
     }
 
     /**
@@ -77,7 +109,7 @@ class QueryBuilder implements \ArrayAccess
      */
     public function offsetGet($offset)
     {
-        // TODO: Implement offsetGet() method.
+        return $this->subject[$offset];
     }
 
     /**
@@ -93,7 +125,7 @@ class QueryBuilder implements \ArrayAccess
      */
     public function offsetSet($offset, $value)
     {
-        // TODO: Implement offsetSet() method.
+        $this->subject[$offset] = $value;
     }
 
     /**
@@ -106,6 +138,24 @@ class QueryBuilder implements \ArrayAccess
      */
     public function offsetUnset($offset)
     {
-        // TODO: Implement offsetUnset() method.
+        unset($this->subject[$offset]);
+    }
+
+    /**
+     * @param $name
+     * @return \Illuminate\Database\Eloquent\HigherOrderBuilderProxy|mixed
+     */
+    public function __get($name)
+    {
+        return $this->subject->{$name};
+    }
+
+    /**
+     * @param $name
+     * @param $value
+     */
+    public function __set($name, $value)
+    {
+        $this->subject->{$name} = $value;
     }
 }
