@@ -1,5 +1,5 @@
 <?php
-namespace Ningwei\QueryBuild;
+namespace Ningwei\QueryBuilder;
 
 use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 use Illuminate\Database\Eloquent\Model;

@@ -1,5 +1,5 @@
 <?php
-namespace Ningwei\QueryBuild;
+namespace Ningwei\QueryBuilder;
 use Illuminate\Support\ServiceProvider;
 
 class QueryBuilderServiceProvider extends ServiceProvider
