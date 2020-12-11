@@ -1,4 +1,5 @@
 <?php
+namespace Ningwei\QueryBuild;
 use Illuminate\Http\Request;
 
 class QueryBuilderRequest extends Request

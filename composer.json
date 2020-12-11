@@ -14,7 +14,7 @@
     },
     "autoload": {
         "psr-4": {
-            "Sherrin\\QueryBuilder\\": "src"
+            "Ningwei\\QueryBuilder\\": "src"
         }
     },
     "config": {
@@ -23,7 +23,7 @@
     "extra": {
         "laravel": {
             "providers": [
-                "Sherrin\\QueryBuilder\\QueryBuilderServiceProvider"
+                "Ningwei\\QueryBuilder\\QueryBuilderServiceProvider"
             ]
         }
     }
