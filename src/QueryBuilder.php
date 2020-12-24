@@ -2,15 +2,17 @@
 namespace Ningwei\QueryBuilder;
 
 use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Traits\ForwardsCalls;
 use Ningwei\QueryBuilder\Exceptions\InvalidSubject;
 
 class QueryBuilder implements \ArrayAccess
 {
-    use \AddFieldsToQuery, ForwardsCalls;
+    use FilterTrait, ForwardsCalls, AppendsAttributesToResults;
     /**
      * @var QueryBuilderRequest
      */
@@ -28,11 +30,24 @@ class QueryBuilder implements \ArrayAccess
     {
         $this->initializeSubject($subject)->initializeRequest($request??app(Request::class));
     }
+
+    /**
+     * 确定查询主体是laravel orm的实例
+     * @param $subject
+     * @return $this
+     * @throws \Throwable
+     */
     protected function initializeSubject($subject): self {
         throw_unless($subject instanceof EloquentBuilder || $subject instanceof Relation, InvalidSubject::make($subject));
         $this->subject = $subject;
         return $this;
     }
+
+    /**
+     * 从接受的请求，由自定义实现(QueryBuilderRequest)创建一个新的请求实例
+     * @param Request|null $request
+     * @return $this
+     */
     protected function initializeRequest(?Request $request = null): self
     {
         $this->request = $request
@@ -46,6 +61,22 @@ class QueryBuilder implements \ArrayAccess
         $result = $this->forwardCallTo($this->subject, $name, $arguments);
         // 如果调用对方法返回的对象是查询主体，那就返回$this,以继续链式操作
         // 不直接返回result的原因就是可能会失去QueryBuilder提供的方法
+        if ($result === $this->subject) {
+            return $this;
+        }
+        if ($result instanceof Model) {
+            dump('Model');
+            $tmpArg = collect([$result]);
+        }
+        if ($result instanceof Collection) {
+            dump('Collection');
+            $tmpArg = collect($result);
+        }
+        if ($result instanceof LengthAwarePaginator) {
+            dump('LengthAwarePaginator');
+            $tmpArg = collect($result->items());
+        }
+        $this->appendToResult($tmpArg);
         return $result;
     }
 
@@ -73,11 +104,12 @@ class QueryBuilder implements \ArrayAccess
     }
 
     /**
+     * 实例化query builder
      * @param EloquentBuilder|string| Relation $subject 查询主体
      * @param Request|null $request
      * @return $this
      */
-    static function for($subject, ?Request $request): self {
+    static function for($subject, ?Request $request = null): self {
         if (is_subclass_of($subject, Model::class)) {
             $subject = $subject::query();
         }
