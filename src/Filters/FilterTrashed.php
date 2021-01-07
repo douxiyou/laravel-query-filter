@@ -6,7 +6,7 @@ namespace Ningwei\QueryBuilder\Filters;
 
 use Illuminate\Database\Eloquent\Builder;
 
-class FiltersTrashed implements FilterInternace
+class FilterTrashed implements FilterInternace
 {
     public function __invoke(Builder $query, $value, string $property)
     {

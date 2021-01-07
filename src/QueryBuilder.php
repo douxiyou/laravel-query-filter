@@ -8,11 +8,16 @@ use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Traits\ForwardsCalls;
+use Ningwei\QueryBuilder\Exceptions\InvalidFilterQuery;
 use Ningwei\QueryBuilder\Exceptions\InvalidSubject;
 
 class QueryBuilder implements \ArrayAccess
 {
-    use FilterTrait, ForwardsCalls, AppendsAttributesToResults;
+    use ForwardsCalls, AppendsAttributesToResults;
+    /**
+     * @var \Illuminate\Support\Collection
+     */
+    protected $filters;
     /**
      * @var QueryBuilderRequest
      */
@@ -28,52 +33,35 @@ class QueryBuilder implements \ArrayAccess
      */
     public function __construct($subject, ?Request $request)
     {
-        $this->initializeSubject($subject)->initializeRequest($request??app(Request::class));
-    }
-
-    /**
-     * 确定查询主体是laravel orm的实例
-     * @param $subject
-     * @return $this
-     * @throws \Throwable
-     */
-    protected function initializeSubject($subject): self {
+//        $this->initializeSubject($subject)->initializeRequest($request??app(Request::class));
         throw_unless($subject instanceof EloquentBuilder || $subject instanceof Relation, InvalidSubject::make($subject));
         $this->subject = $subject;
-        return $this;
-    }
-
-    /**
-     * 从接受的请求，由自定义实现(QueryBuilderRequest)创建一个新的请求实例
-     * @param Request|null $request
-     * @return $this
-     */
-    protected function initializeRequest(?Request $request = null): self
-    {
         $this->request = $request
             ? QueryBuilderRequest::fromRequest($request)
             : app(QueryBuilderRequest::class);
-
-        return $this;
     }
+
+    /**
+     * @param $name
+     * @param $arguments
+     * @return QueryBuilder|mixed
+     */
     function __call($name, $arguments)
     {
-        $result = $this->forwardCallTo($this->subject, $name, $arguments);
+        $result = $this->subject->{$name}(...$arguments);
         // 如果调用对方法返回的对象是查询主体，那就返回$this,以继续链式操作
-        // 不直接返回result的原因就是可能会失去QueryBuilder提供的方法
         if ($result === $this->subject) {
             return $this;
         }
+        // 统一类型
+        // TODO::::: php8 match(){}
         if ($result instanceof Model) {
-            dump('Model');
             $tmpArg = collect([$result]);
         }
         if ($result instanceof Collection) {
-            dump('Collection');
             $tmpArg = collect($result);
         }
         if ($result instanceof LengthAwarePaginator) {
-            dump('LengthAwarePaginator');
             $tmpArg = collect($result->items());
         }
         $this->appendToResult($tmpArg);
@@ -107,7 +95,7 @@ class QueryBuilder implements \ArrayAccess
      * 实例化query builder
      * @param EloquentBuilder|string| Relation $subject 查询主体
      * @param Request|null $request
-     * @return $this
+     * @return QueryBuilder
      */
     static function for($subject, ?Request $request = null): self {
         if (is_subclass_of($subject, Model::class)) {
@@ -115,6 +103,75 @@ class QueryBuilder implements \ArrayAccess
         }
         return new static($subject, $request);
     }
+
+    /**
+     * @description 添加过滤字段(过滤器对象)
+     * @param array|string $filters
+     * @return $this
+     */
+    function additionalFilter(array|string $filters): self {
+        $filters = is_array($filters) ? $filters : func_get_args();
+        $this->filters = collect($filters)
+            ->map(function ($filter) {
+                if ($filter instanceof AllowedFilter) {
+                    return $filter;
+                }
+                return AllowedFilter::partial($filter);
+            });
+//        if (!config('filter.is_exception')) {
+//            return;
+//        }
+        $this->ensureAllFiltersExist();
+        $this->addFiltersToQuery();
+        return $this;
+    }
+    protected function addFiltersToQuery()
+    {
+        $this->filters->each(function (AllowedFilter $filter) {
+            // 验证过滤器是否被包含在请求中
+            if ($this->isFilterRequested($filter)) {
+                // 获取对应过滤器的值
+                $value = $this->request->filters()->get($filter->getName());
+                $filter->filter($this, $value);
+
+                return;
+            }
+//            if ($filter->hasDefault()) {
+//                $filter->filter($this, $filter->getDefault());
+//
+//                return;
+//            }
+        });
+    }
+
+    /**
+     * 
+     * @param AllowedFilter $allowedFilter
+     * @return bool
+     */
+    protected function isFilterRequested(AllowedFilter $allowedFilter): bool
+    {
+        return $this->request->filters()->has($allowedFilter->getName());
+    }
+
+    /**
+     * @description 如果请求中包含指定的过滤字段以外的内容，是否发出异常警告
+     */
+    protected function ensureAllFiltersExist()
+    {
+        $filterNames = $this->request->filters()->keys();
+        $allowedFilterNames = $this->filters->map(function (AllowedFilter $allowedFilter) {
+            return $allowedFilter->getName();
+        });
+
+        $diff = $filterNames->diff($allowedFilterNames);
+        if ($diff->count()) {
+            throw InvalidFilterQuery::filtersNotAllowed($diff, $allowedFilterNames);
+        }
+    }
+
+
+
     /**
      * Whether a offset exists
      * @link https://php.net/manual/en/arrayaccess.offsetexists.php

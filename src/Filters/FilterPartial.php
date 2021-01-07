@@ -3,6 +3,11 @@
 namespace Ningwei\QueryBuilder\Filters;
 use Illuminate\Database\Eloquent\Builder;
 
+/**
+ * @description 局部
+ * Class FilterPartial
+ * @package Ningwei\QueryBuilder\Filters
+ */
 class FilterPartial extends FilterExact implements FilterInternace
 {
     public function __invoke(Builder $query, $value, string $property)

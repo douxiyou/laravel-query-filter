@@ -7,6 +7,11 @@ use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
+/**
+ * @description 精确
+ * Class FilterExact
+ * @package Ningwei\QueryBuilder\Filters
+ */
 class FilterExact implements FilterInternace
 {
     protected $relationConstraints = [];

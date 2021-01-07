@@ -38,6 +38,16 @@ class QueryBuilderRequest extends Request
         }
         return $value;
     }
+    public function appends(): Collection
+    {
+        $appendParts = $this->query();
+
+        if (! is_array($appendParts)) {
+            $appendParts = explode(',', strtolower($appendParts));
+        }
+
+        return collect($appendParts)->filter();
+    }
 
 
     public static function setFilterArrayValueDelimiter(string $filterArrayValueDelimiter): void

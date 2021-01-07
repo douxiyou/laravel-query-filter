@@ -11,7 +11,7 @@ use ReflectionObject;
 use ReflectionParameter;
 use ReflectionUnionType;
 
-class FiltersScope implements FilterInternace
+class FilterScope implements FilterInternace
 {
     public function __invoke(Builder $query, $values, string $property): Builder
     {
